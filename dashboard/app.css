@@ -11,6 +11,7 @@
   --muted: #5f6f67;
   --border: #d8e2dc;
   --accent: #0f7a5a;
+  --warn: #9a6a12;
   --negative: #b23b2e;
   --radius-control: 8px;
   --radius-panel: 14px;
@@ -353,6 +354,34 @@ tbody tr[data-selected="true"] {
 
 .neg {
   color: var(--negative);
+}
+
+/* Risk badge: the label and the 0-100 score, coloured by the label, never by the rank. */
+.risk {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-num);
+  font-size: 12px;
+  white-space: nowrap;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.risk-low {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--surface));
+}
+
+.risk-moderate {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--surface));
+}
+
+.risk-high {
+  color: var(--negative);
+  border-color: color-mix(in srgb, var(--negative) 45%, var(--surface));
 }
 
 .bar {
