@@ -38,14 +38,20 @@ function arg(name: string, fallback: string): string {
   return withEquals === undefined ? fallback : withEquals.slice(name.length + 3);
 }
 
+// ---- Inputs ------------------------------------------------------------------
+// The snapshot is a file or a directory holding snapshot.json; /input is the sealed mount.
 const inputArg = arg('input', '/input');
 const inputFile = inputArg.endsWith('.json') ? inputArg : join(inputArg, 'snapshot.json');
 if (!existsSync(inputFile)) {
   process.stderr.write(`token radar: no snapshot at ${inputFile}: pass --input <snapshot.json|directory> or mount the sealed /input\n`);
   process.exit(2);
 }
+// The output directory is --output, else MAKEFUN_OUTPUT_DIR, else the grader's /output.
 const out = arg('output', process.env.MAKEFUN_OUTPUT_DIR ?? '/output');
 
+// ---- Score -------------------------------------------------------------------
+// parseSnapshot validates the sealed file; buildRadar ranks it; boardIssue is the gate's own
+// check run early, so a bad board fails here with a plain message instead of at scoring time.
 const snapshot = parseSnapshot(readFileSync(inputFile, 'utf8'));
 const { board, radar } = buildRadar(snapshot);
 const issue = boardIssue(board, snapshot);
@@ -54,6 +60,7 @@ if (issue !== null) {
   process.exit(1);
 }
 
+// ---- Outputs -----------------------------------------------------------------
 mkdirSync(out, { recursive: true });
 writeFileSync(join(out, 'board.json'), `${JSON.stringify({ rows: board })}\n`);
 writeFileSync(join(out, 'data.js'), dataScript(radar));
@@ -73,7 +80,9 @@ function copyFiles(from: string, to: string): string[] {
   return copied;
 }
 
+// The dashboard ships as-is: the page reads data.js written above, so it shows this board.
 copyFiles(join(here, 'dashboard'), join(out, 'dashboard'));
+// The gate wants three screenshots at least: the board, a detail view and a filtered view.
 const shots = copyFiles(join(here, 'screenshots'), join(out, 'screenshots'));
 if (shots.length < 3) {
   process.stderr.write(`token radar: screenshots/ holds ${shots.length} image${shots.length === 1 ? '' : 's'}: hand in 3, the board, a detail view and a filtered view\n`);
