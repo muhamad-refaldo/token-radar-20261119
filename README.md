@@ -48,3 +48,15 @@ the output directory. It runs twice and writes identical bytes.
 - `vendor/makefun-board.ts` — the make.fun dossier library.
 - `dashboard/` — the offline dashboard (index.html, app.css, app.js).
 - `screenshots/` — board, detail and filtered views of the dashboard.
+
+## Screenshots
+
+Taken at 1440x900 from the shipped dashboard running on this
+snapshot's data (no network):
+
+- `1-board.png` — the ranked board: 226 rows, rank 1 Steakhouse
+  Financial at $650.2M implied value.
+- `2-detail.png` — the detail view for rank 1, with the model's
+  multipliers and its 7-step farm plan.
+- `3-filtered.png` — the board filtered to the Lending category:
+  14 rows shown.
