@@ -21,6 +21,13 @@
 // and is printed in the dashboard's model panel, so any row can be recomputed by hand. No name is
 // ever special-cased: the same function scores every protocol, and the board's order is the
 // model's order, never a hand-picked list.
+//
+// A risk score rides alongside the value, from the same figures: 0-100, higher is riskier. It
+// starts at 20 and adds for a falling seven-day growth (up to 25), a short or unknown no-token
+// run (up to 15), running on a single chain (15, or 5 for two chains), a small TVL under $100M
+// (10), and a sharp weekly swing over 30% either way (10). The label follows the score: Low at
+// 35 or under, Moderate to 60, High above. Risk never changes the rank — it is shown next to the
+// value so a reader can see the trade-off the ranking itself does not make for them.
 
 /** One day, in milliseconds: the unit age_days is counted in. */
 const DAY_MS = 86_400_000;
@@ -122,6 +129,8 @@ export interface BoardRow {
   token_status: 'pre-token';
   age_days: number | null;
   implied_value_usd: number;
+  risk_score: number;
+  risk_label: 'Low' | 'Moderate' | 'High';
   model: {
     base_multiple: number;
     growth_pct: number;
@@ -146,6 +155,8 @@ export interface RadarRow {
   listed_at: string | null;
   age_days: number | null;
   implied_value_usd: number;
+  risk_score: number;
+  risk_label: 'Low' | 'Moderate' | 'High';
   growth_multiplier: number;
   maturity_multiplier: number;
   chain_multiplier: number;
@@ -223,6 +234,23 @@ export function impliedValue(
   const base = protocol.tvl_usd * model.base_multiple;
   const implied = Math.max(1, Math.round(base * growthMult * maturityMult * chainMult));
   return { implied, growthPct, growthMult, maturityMult, chainMult, age };
+}
+
+/** A protocol's risk score, 0-100 from the snapshot's own figures; higher is riskier. */
+export function riskScore(protocol: SnapshotProtocol, age: number | null): { score: number; label: 'Low' | 'Moderate' | 'High' } {
+  let score = 20;
+  const growth = numberOr(protocol.change_7d, 0);
+  if (growth < 0) score += Math.min(25, Math.round(-growth * 0.5));
+  if (Math.abs(growth) > 30) score += 10;
+  if (age === null) score += 15;
+  else if (age < 180) score += 10;
+  else if (age < 365) score += 5;
+  if (protocol.chains.length <= 1) score += 15;
+  else if (protocol.chains.length === 2) score += 5;
+  if (protocol.tvl_usd < 100_000_000) score += 10;
+  score = Math.min(100, score);
+  const label = score <= 35 ? 'Low' : score <= 60 ? 'Moderate' : 'High';
+  return { score, label };
 }
 
 // ---- Which protocols the board may rank ---------------------------------------
@@ -308,6 +336,23 @@ function actionFor(p: SnapshotProtocol, capital: number, chain: string): string 
   return 'Deposit $' + capital + ' of USDC into ' + name + ' on ' + chain + ' and keep the position open.';
 }
 
+/** The category's weekly action: what to do each week to stay counted, in the category's own terms. */
+function weeklyActionFor(p: SnapshotProtocol): string {
+  const c = (p.category === null ? '' : p.category).toLowerCase();
+  const has = (word: string): boolean => c.indexOf(word) >= 0;
+  if (has('lend') || has('cdp') || has('collateral')) return 'Top up or adjust the position once a week so the health factor stays above the safe line the protocol publishes.';
+  if (has('dex') || has('yield') || has('leveraged farm')) return 'Rebalance the liquidity once a week and collect the fees the pool earned instead of leaving them idle.';
+  if (has('bridge')) return 'Bridge a small amount once a week so the route stays active in your history.';
+  if (has('staking') || has('restak')) return 'Check the staking rewards once a week and restake them instead of leaving them idle.';
+  if (has('perpetual') || has('derivative')) return 'Close or trim the hedge once a week so the margin never drifts far from where you opened it.';
+  if (has('prediction')) return 'Settle one market a week and keep the position size the same.';
+  if (has('curator') || has('allocator')) return "Check the vault's allocation once a week and note any strategy change on the protocol's own page.";
+  if (has('stable')) return "Check the peg once a week and note any depeg warning on the protocol's own page.";
+  if (has('rwa')) return "Check the underlying asset's report once a week and note any redemption change.";
+  if (has('insurance')) return 'Check the cover terms once a week and note any claim window change.';
+  return 'Make one qualifying action each week, such as a deposit, a borrow, a swap or a vote.';
+}
+
 /**
  * A protocol's farm plan: seven steps, each an action with a cost and a time. The plan is derived from
  * the protocol's own record (category, chains, TVL, age), never from a hand-written list of names.
@@ -321,7 +366,7 @@ export function farmSteps(p: SnapshotProtocol, age: number | null): FarmStep[] {
   return [
     mkStep('Use a fresh wallet that holds only the funds you plan to farm, and keep its seed phrase offline.', 'under $3 of gas for the first transaction', '5 minutes'),
     mkStep(action, '$' + capital + ' of capital and about $' + gas + ' of gas', '15 minutes to set up'),
-    mkStep('Make one qualifying action each week, such as a deposit, a borrow, a swap or a vote.', 'about $2 of gas a week', '10 minutes a week'),
+    mkStep(weeklyActionFor(p), 'about $2 of gas a week', '10 minutes a week'),
     mkStep('Hold the position for at least ' + hold + ' days so the activity is counted in more than one snapshot.', 'the $' + capital + ' stays in the position', hold + ' days'),
     mkStep("Before you withdraw, open the protocol's own points or rewards page and claim only from the link it publishes.", 'no fee to check, and never pay to claim', '10 minutes'),
     mkStep('Write the wallet, the dates and every transaction in a farm log so you can repeat the position or unwind it.', 'nothing but the log', '5 minutes'),
@@ -359,7 +404,8 @@ export function buildBoard(snapshot: Snapshot, model: ModelConstants = MODEL): B
 
   const scored = [...picked.values()].map((p) => {
     const value = impliedValue(p, snapshot.as_of, model);
-    return { p, slug: p.slug, implied: value.implied, growthPct: value.growthPct, growthMult: value.growthMult, maturityMult: value.maturityMult, chainMult: value.chainMult, age: value.age };
+    const risk = riskScore(p, value.age);
+    return { p, slug: p.slug, implied: value.implied, growthPct: value.growthPct, growthMult: value.growthMult, maturityMult: value.maturityMult, chainMult: value.chainMult, age: value.age, riskScore: risk.score, riskLabel: risk.label };
   });
   scored.sort(byImpliedDesc);
   return scored.map((s, i) => {
@@ -379,6 +425,8 @@ export function buildBoard(snapshot: Snapshot, model: ModelConstants = MODEL): B
       token_status: 'pre-token' as const,
       age_days: s.age,
       implied_value_usd: s.implied,
+      risk_score: s.riskScore,
+      risk_label: s.riskLabel,
       model: {
         base_multiple: model.base_multiple,
         growth_pct: s.growthPct,
@@ -421,6 +469,8 @@ export function radarRow(row: BoardRow): RadarRow {
     listed_at: row.listed_at,
     age_days: row.age_days,
     implied_value_usd: row.implied_value_usd,
+    risk_score: row.risk_score,
+    risk_label: row.risk_label,
     growth_multiplier: row.model.growth_multiplier,
     maturity_multiplier: row.model.maturity_multiplier,
     chain_multiplier: row.model.chain_multiplier,
