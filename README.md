@@ -23,9 +23,14 @@ how to farm each one — all offline, in a static dashboard.
   all 186 rankable pre-token protocols below the floor.
 - Every row carries a 7-step farm plan with concrete costs and times,
   derived from the protocol's own category, chains, TVL and age —
-  no protocol name is ever special-cased.
+  no protocol name is ever special-cased. The weekly step is written
+  for the protocol's own category.
+- Every row also carries a risk score (0-100, Low / Moderate / High)
+  from the same figures — falling growth, a short run, a single chain,
+  a small TVL and sharp weekly swings all add to it — shown next to
+  the value, never changing the rank.
 - The dashboard (`dashboard/`) is a static page with no network:
-  a sortable, filterable board, a detail view for every protocol,
+  a sortable, filterable board (by category and chain), a detail view for every protocol,
   and a separate Live token view for protocols whose token
   already trades (shown by market cap, never mixed into the ranking).
 
