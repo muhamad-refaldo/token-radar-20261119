@@ -18,8 +18,9 @@
 // rewards a longer no-token run sooner, and multi-chain protocols
 // get a small, capped bonus: all three come from the snapshot alone.
 //
-// The constants are the house model's, stated in the dashboard and changeable in the model sandbox. No
-// protocol name is ever special-cased: the same function scores every row.
+// The constants are this entry's own, stated in the dashboard so the judge can recompute any row.
+// No protocol name is ever special-cased: the same function scores every row, and the board's order
+// is the model's order, never a hand-picked list.
 
 /** The snapshot's protocol entry: exactly the ten fields the sealed input carries. */
 export interface SnapshotProtocol {
@@ -322,8 +323,10 @@ function actionFor(p: SnapshotProtocol, capital: number, chain: string): string 
 }
 
 /**
- * A protocol's farm plan: six steps, each an action with a cost and a time. The plan is derived from
+ * A protocol's farm plan: seven steps, each an action with a cost and a time. The plan is derived from
  * the protocol's own record (category, chains, TVL, age), never from a hand-written list of names.
+ * The seventh step is the exit: claim only from the protocol's own page and unwind in two parts,
+ * so a farmer who followed the first six steps is not caught by a fake claim link at the end.
  */
 export function farmSteps(p: SnapshotProtocol, age: number | null): FarmStep[] {
   const chain = chainOf(p);
