@@ -14,11 +14,14 @@ how to farm each one — all offline, in a static dashboard.
 
 - Reads `input/snapshot.json` (758 protocols, as of 2026-11-14,
   watchlist floor $50M, 40 watchlist protocols).
-- Scores every rankable pre-token protocol with model `radar-2`:
-  `implied = round(TVL x 0.25 x growth x maturity x chains)`,
-  where growth is the clamped 7-day TVL change (weight 0.7),
-  maturity grows with how long the protocol has run with no token
-  (0.5 to 1.0 over 730 days), and multi-chain reach adds up to 10%.
+- Scores every rankable pre-token protocol with model `radar-3`:
+  `implied = round(TVL x 0.1857 x growth x maturity x chains)`,
+  where 0.1857 is the median market-cap/TVL of the 133 live-token
+  protocols in the same snapshot (exchanges excluded) — calibrated,
+  not picked — growth is the clamped 7-day TVL change (weight 0.5,
+  dampened because one week is noisy), maturity grows with how long
+  the protocol has run with no token (0.5 to 1.0 over 730 days), and
+  multi-chain reach adds up to 10%.
 - Writes 226 rows to `board.json`: all 40 watchlist protocols plus
   all 186 rankable pre-token protocols below the floor.
 - Every row carries a 7-step farm plan with concrete costs and times,
@@ -49,7 +52,7 @@ the output directory. It runs twice and writes identical bytes.
 
 - `main.ts` — entrypoint: reads the snapshot, writes the board,
   data and dossier.
-- `lib/model.ts` — the radar-2 model, farm plans and board checks.
+- `lib/model.ts` — the radar-3 model, farm plans and board checks.
 - `vendor/makefun-board.ts` — the make.fun dossier library.
 - `dashboard/` — the offline dashboard (index.html, app.css, app.js).
 - `screenshots/` — board, detail and filtered views of the dashboard.

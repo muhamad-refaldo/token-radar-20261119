@@ -1,12 +1,14 @@
 // Token Radar: a token-radar-01 entry (Node 22, standard library only).
 //
 // The program reads the sealed snapshot from /input/snapshot.json (or --input <file|dir>), scores every
-// pre-token protocol with the radar-2 model in lib/model.ts, writes the ranked board to
+// pre-token protocol with the radar-3 model in lib/model.ts, writes the ranked board to
 // /output/board.json, and copies this repository's dashboard/ and screenshots/ to /output. Last, it
 // writes /output/dossier.json, the summary the judge reads, with the vendored make.fun library.
 //
-// The radar-2 model ranks by implied launch value from the snapshot's own figures: TVL, seven-day
-// growth, how long the protocol has run with no token, and how many chains it spans. The board covers
+// The radar-3 model ranks by implied launch value from the snapshot's own figures: TVL, seven-day
+// growth, how long the protocol has run with no token, and how many chains it spans. Its base
+// multiple is calibrated, not picked: the median market-cap/TVL of the live-token protocols in
+// the same snapshot. The board covers
 // the whole watchlist and every rankable pre-token protocol below the floor (226 rows on this snapshot),
 // and every row carries a seven-step farm plan with costs and times.
 //
