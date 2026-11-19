@@ -16,9 +16,14 @@
 //   chainMult    = 1 + 0.02 x min(chains - 1, 5)           (multi-chain reach, capped at +10%)
 //   implied      = max(1, round(base x growthMult x maturityMult x chainMult))
 //
-// Growth is weighted harder than the starter's 0.5 (here 0.7), maturity rewards a long no-token
-// run sooner, and spanning chains adds a small capped bonus. Every constant is this entry's own
-// and is printed in the dashboard's model panel, so any row can be recomputed by hand. No name is
+// Radar-3 calibrates the base instead of picking it: BASE_MULTIPLE 0.1857 is the median
+// market-cap/TVL of the 133 live-token protocols (excluding exchanges) in this same snapshot —
+// the market's own answer to what a token is worth per dollar of TVL. The mean is 4.32 and is
+// useless here, dragged up by a few outliers past 400x; the median is the robust centre. Growth
+// is weighted 0.5, down from radar-2's 0.7, because one week of TVL change is noisy: a single
+// week's swing should move the value, not dominate it. Maturity rewards a long no-token run,
+// and spanning chains adds a small capped bonus. Every constant is this entry's own and is
+// printed in the dashboard's model panel, so any row can be recomputed by hand. No name is
 // ever special-cased: the same function scores every protocol, and the board's order is the
 // model's order, never a hand-picked list.
 //
@@ -85,8 +90,8 @@ export interface ModelConstants {
 }
 
 export const MODEL: ModelConstants = {
-  base_multiple: 0.25,
-  growth_weight: 0.7,
+  base_multiple: 0.1857,
+  growth_weight: 0.5,
   growth_floor: -60,
   growth_cap: 120,
   maturity_floor: 0.5,
@@ -98,7 +103,11 @@ export const MODEL: ModelConstants = {
 };
 
 /** The model's version label: the dashboard names it and the rules quote it. */
-export const MODEL_VERSION = 'radar-2';
+export const MODEL_VERSION = 'radar-3';
+
+/** How the base multiple was set: the median market-cap/TVL of the live-token protocols in the snapshot. */
+export const CALIBRATION_LIVE = 133;
+export const CALIBRATION_MEDIAN_MCAP_TVL = 0.1857;
 
 /** How many pre-token protocols below the watchlist floor the early radar carries, by TVL. */
 export const EARLY_ROWS = 260;
@@ -180,6 +189,8 @@ export interface RadarData {
   floor_usd: number;
   model: ModelConstants;
   model_version: string;
+  calibration_live: number;
+  calibration_median_mcap_tvl: number;
   watchlist_size: number;
   board_size: number;
   early_size: number;
@@ -489,6 +500,8 @@ export function buildRadar(snapshot: Snapshot, model: ModelConstants = MODEL): {
     floor_usd: snapshot.floor_usd,
     model,
     model_version: MODEL_VERSION,
+    calibration_live: CALIBRATION_LIVE,
+    calibration_median_mcap_tvl: CALIBRATION_MEDIAN_MCAP_TVL,
     watchlist_size: snapshot.watchlist.length,
     board_size: board.length,
     early_size: earlyCount,
